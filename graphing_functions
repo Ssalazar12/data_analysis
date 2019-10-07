@@ -1,0 +1,154 @@
+###################
+graphing functions#
+###################
+
+def biplot(score,coeff,columns,labels, limits,showlegend, showloadings):
+    #score = pca transformed data
+    #labels = data labels
+    #limits = x and y size,
+    #showlegedn = show label names
+    #biplot with loading vectors
+    xs = score.iloc[:,0]
+    ys = score.iloc[:,1]
+    n = coeff.shape[0]
+    scalex = 1.0/(xs.max() - xs.min())
+    scaley = 1.0/(ys.max() - ys.min())
+    plt.figure(figsize=(20,20)) 
+    plt.xlim(-limits,limits)
+    plt.ylim(-limits,limits)
+    plt.xlabel("PC{}".format(1))
+    plt.ylabel("PC{}".format(2))
+    plt.grid()
+    
+    for lab in labels:
+        x_pc = score[score[lab]==1].iloc[:,0]
+        y_pc = score[score[lab]==1].iloc[:,1]
+        plt.scatter(x_pc * scalex,y_pc * scaley,label=lab,marker ='x')
+    if showloadings:
+        for i in range(n):
+            plt.arrow(0, 0, coeff[i,0], coeff[i,1],color = 'r',alpha = 0.5)
+            if labels != None:
+                plt.text(coeff[i,0]* 1.15, coeff[i,1] * 1.15, columns[i], color = 'g', ha = 'center', va = 'center')
+    if showlegend:
+        plt.legend()
+        
+PARALLEL PLOTS
+##########################
+parallel coordinats with scaling
+#'bad_debt', 'cashin_tx_freq_1month', 'fixcost_tx_freq_1month', 'failed_payments','perc_change32','perc_change21'
+filtered_data['bad_debt'] = filtered_data['bad_debt'].astype('category')
+
+cols = ['cashin_tx_freq_1month','fixcost_tx_freq_1month', 'failed_payments','pay_ratio','perc_change_mean']
+x = [i for i, _ in enumerate(cols)]
+colours = ['#2e8ad8', '#cd3785']
+
+# create dict of categories: colours
+colours = {filtered_data['bad_debt'].cat.categories[i]: colours[i] for i, _ in enumerate(filtered_data['bad_debt'].cat.categories)}
+
+# Create (X-1) sublots along x axis
+fig, axes = plt.subplots(1, len(x)-1, sharey=False, figsize=(15,5))
+
+# Get min, max and range for each column
+# Normalize the data for each column
+min_max_range = {}
+for col in cols:
+    min_max_range[col] = [filtered_data[col].min(), filtered_data[col].max(), np.ptp(filtered_data[col])]
+    filtered_data[col] = np.true_divide(filtered_data[col] - filtered_data[col].min(), np.ptp(filtered_data[col]))
+
+# Plot each row
+for i, ax in enumerate(axes):
+    for idx in filtered_data.index:
+        bad_category = filtered_data.loc[idx, 'bad_debt']
+        ax.plot(x, filtered_data.loc[idx, cols], colours[bad_category])
+    ax.set_xlim([x[i], x[i+1]])
+    
+# Set the tick positions and labels on y axis for each plot
+# Tick positions based on normalised data
+# Tick labels are based on original data
+def set_ticks_for_axis(dim, ax, ticks):
+    min_val, max_val, val_range = min_max_range[cols[dim]]
+    step = val_range / float(ticks-1)
+    tick_labels = [round(min_val + step * i, 2) for i in range(ticks)]
+    norm_min = filtered_data[cols[dim]].min()
+    norm_range = np.ptp(filtered_data[cols[dim]])
+    norm_step = norm_range / float(ticks-1)
+    ticks = [round(norm_min + norm_step * i, 2) for i in range(ticks)]
+    ax.yaxis.set_ticks(ticks)
+    ax.set_yticklabels(tick_labels)
+
+for dim, ax in enumerate(axes):
+    ax.xaxis.set_major_locator(ticker.FixedLocator([dim]))
+    set_ticks_for_axis(dim, ax, ticks=6)
+    ax.set_xticklabels([cols[dim]])
+    
+
+# Move the final axis' ticks to the right-hand side
+ax = plt.twinx(axes[-1])
+dim = len(axes)
+ax.xaxis.set_major_locator(ticker.FixedLocator([x[-2], x[-1]]))
+set_ticks_for_axis(dim, ax, ticks=6)
+ax.set_xticklabels([cols[-2], cols[-1]])
+
+
+# Remove space between subplots
+plt.subplots_adjust(wspace=0)
+
+# Add legend to plot
+plt.legend(
+    [plt.Line2D((0,1),(0,0), color=colours[cat]) for cat in filtered_data['bad_debt'].cat.categories],
+    filtered_data['bad_debt'].cat.categories,
+    bbox_to_anchor=(1.2, 1), loc=2, borderaxespad=0.)
+
+plt.title("Values of client attributes by Bad Debt")
+
+
+PIE CHARTS
+##################
+def plot_pie_chart():
+  interval1 = pd_acc_freq[(pd_acc_freq['score']==0)]['score'].count()
+  interval2 = pd_acc_freq[(pd_acc_freq['score']<=2000) &(pd_acc_freq['score']>=1500) ]['score'].count()
+  interval3 = pd_acc_freq[(pd_acc_freq['score']<=4000) &(pd_acc_freq['score']> 2000) ]['score'].count()
+  interval4 = pd_acc_freq[(pd_acc_freq['score']<=6000) &(pd_acc_freq['score']>4000) ]['score'].count()
+  interval5 = pd_acc_freq[(pd_acc_freq['score']>6000)]['score'].count()
+
+  #credit line pie charts
+  # Pie chart
+
+  labels = ['0','1500-2000', '4000-2000', '6000-4000','>6000']
+  sizes = [interval1,interval2,interval3,interval4,interval5]
+  # only "explode" the 2nd slice (i.e. 'Hogs')
+  explode = (0,0, 0, 0, 0)  
+  fig1, ax1 = plt.subplots(figsize=[8, 8])
+
+  ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
+        shadow=False, startangle=90)
+  # Equal aspect ratio ensures that pie is drawn as a circle
+  ax1.axis('equal')  
+  plt.title('Current Credit Line ')
+  plt.tight_layout()
+  
+  BOX AND VIOLIN PLOTS
+  ###################
+  #percentage change
+fig = plt.figure(figsize=(20,15)) 
+plt.subplot(2, 3, 1)
+sns.boxplot(x='new_label', y='income_change_mean_m', data=data_set)
+sns.swarmplot(x='new_label', y='income_change_mean_m', data=data_set, color="grey")
+plt.subplot(2, 3, 2)
+sns.boxplot(x='new_label', y='income_change_mean_m', data=data_set, showfliers=False, notch=True)
+plt.subplot(2, 3, 3)
+sns.violinplot(x='new_label', y='income_change_mean_m', data=data_set)
+#total perc change
+data_set['income_change_total_m'] = data_set['income_change5m4m'] + data_set['income_change4m3m'] + \
+                    data_set['income_change3m2m'] + data_set['income_change2m1m']
+
+plt.subplot(2, 3, 4)
+sns.boxplot(x='new_label', y='income_change_total_m', data=data_set)
+sns.swarmplot(x='new_label', y='income_change_total_m', data=data_set, color="grey")
+plt.subplot(2, 3, 5)
+sns.boxplot(x='new_label', y='income_change_total_m', data=data_set,showfliers=False, notch=True)
+plt.subplot(2, 3, 6)
+sns.violinplot(x='new_label', y='income_change_total_m', data=data_set)
+
+
+plt.tight_layout()
