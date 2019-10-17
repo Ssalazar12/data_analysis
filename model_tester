@@ -353,3 +353,45 @@ def feature_importance(trained_model, graph_title,train_columns):
     plt.show()
     
     return das_coef.sort_values(by='coef',ascending=False)
+    
+    
+    def test_one_class(df_train,df_test, model ,features,label,inlier_value,outlier_value):
+    #includes grid search
+    #training_inliers = dataframe with in liers, 
+    #test_pipeline = modelo a probar
+    df_return = df_train.copy()
+    training_inliers = df_train[df_train[label]==inlier_value].copy()
+    
+    inliers_test = df_test[df_test[label]==inlier_value].copy()
+    outliers_test = df_test[df_test[label]==outlier_value].copy()
+    
+    #fitting model
+    model.fit(training_inliers[features])
+        
+    #training predictions
+    df_return['predicted_label'] = model.predict(df_return[features])
+    inliers_test['predicted_label'] = model.predict(inliers_test[features])
+    outliers_test['predicted_label'] = model.predict(outliers_test[features])
+        
+    df_return.loc[df_return.predicted_label== -1,'predicted_label'] = outlier_value
+    df_return.loc[df_return.predicted_label== 1,'predicted_label'] = inlier_value
+
+    inliers_test.loc[inliers_test.predicted_label==1,'predicted_label'] = inlier_value
+    inliers_test.loc[inliers_test.predicted_label==-1,'predicted_label'] = outlier_value
+
+    outliers_test.loc[outliers_test.predicted_label==1,'predicted_label'] = inlier_value
+    outliers_test.loc[outliers_test.predicted_label==-1,'predicted_label'] = outlier_value
+    
+    inliear_acc =  list(inliers_test['predicted_label']).count(0)/inliers_test['predicted_label'].shape[0]
+    outlier_acc =  list(outliers_test['predicted_label']).count(1)/outliers_test['predicted_label'].shape[0]
+    
+    both_matrices = confusion_matrix(inliers_test['predicted_label'], inliers_test['our_label']) + \
+                confusion_matrix(outliers_test['predicted_label'], outliers_test['our_label'])
+    
+    predicted_all = pd.concat([inliers_test[['predicted_label','our_label']] , 
+                               outliers_test[['predicted_label','our_label']]] , axis = 0)
+    
+    f1_m = f1_score(predicted_all['our_label'],predicted_all['predicted_label'],average='macro')
+    
+    return inliear_acc, outlier_acc, both_matrices,f1_m
+
