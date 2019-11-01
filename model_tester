@@ -395,3 +395,63 @@ def feature_importance(trained_model, graph_title,train_columns):
     
     return inliear_acc, outlier_acc, both_matrices,f1_m
 
+######## test a model many times------------------------
+
+f1s_our = []
+f1s_johan = []
+f1s_nodrop = []
+
+for i in range(100):
+    
+    seed = np.random.randint(10,500)
+    
+    label='bad_debt'
+    _, y_probs_input_fixcost, y_test = training_with_best(train_data,features_input_fixcost,label,
+                                                     'INPUT & FIXCOST',input_fix_our_params,seed)
+                                                                
+    _, y_probs_input_cashin, y_test = training_with_best(train_data,features_input_cashin,label,
+                                    'INPUT & CASHIN',input_cash_our_params,seed)
+
+    y_probs = (y_probs_input_fixcost + y_probs_input_cashin ) / 2 
+    y_pred_ens = np.where(y_probs > 0.55, 1, 0)
+
+    print(confusion_matrix(y_test, y_pred_ens[:,1], labels=label_values.sort()))
+    
+    f1 = f1_score(y_test,y_pred_ens[:,1],average='macro')
+    f1s_our.append(f1)
+    
+    
+    #-----------------------------------------------------------------------------------
+    
+    label = 'new_johan_label'
+    
+    features_all = [ c for c in features for f in filter_all if f in c]
+                                                                
+    _, y_probs_all, y_test = training_with_best(train_data,features_all,label,
+                                                     'ALL',all_johan_params,seed)
+
+    y_probs = y_probs_all
+    y_pred_ens = np.where(y_probs > 0.452, 1, 0)
+
+    print(confusion_matrix(y_test, y_pred_ens[:,1], labels=label_values.sort()))
+    
+    f1 = f1_score(y_test,y_pred_ens[:,1],average='macro')
+    f1s_johan.append(f1)
+    
+    #------Without dropping loans-------------------------------------------------------#
+    label = 'new_johan_label'
+    
+    features_all = [ c for c in features for f in filter_all if f in c]
+                                                                
+    _, y_probs_all, y_test = train_best_no_drop(train_data_all,features_all,label,
+                                                     'ALL',no_drop_all_johan_params,seed)
+
+    y_probs = y_probs_all
+    y_pred_ens = np.where(y_probs > 0.532, 1, 0)
+
+    print(confusion_matrix(y_test, y_pred_ens[:,1], labels=label_values.sort()))
+    
+    f1 = f1_score(y_test,y_pred_ens[:,1],average='macro')
+    f1s_nodrop.append(f1)
+    
+
