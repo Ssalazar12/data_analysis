@@ -2,6 +2,34 @@
 graphing functions#
 ###################
 
+######PCA SCALED----------------------------------------
+# Scaling mean = 0, var = 1
+pd_data_scaled = pd_data.copy()
+pd_data_scaled[features_30_days] = pd.DataFrame(StandardScaler().fit_transform(pd_data[features_30_days]), 
+                           index = pd_data[features_30_days].index,
+                           columns = pd_data[features_30_days].columns)
+                           
+pca = decomposition.PCA()
+features_pca = pd.DataFrame(pca.fit_transform(pd_data_scaled[features_30_days]),
+                                          index = pd_data_scaled.index )
+                                          
+                                          
+#######manifold rep------------------------------------
+
+data_embedded = pd.DataFrame(TSNE(n_components=2).fit_transform(pd_data[features_30_days]), index = pd_data.index)
+data_embedded['new_johan_label'] = pd_data['new_johan_label']
+
+fig = plt.figure(figsize=(10,10)) 
+
+plt.scatter(data_embedded[data_embedded['new_johan_label']==1].iloc[:,0], 
+            data_embedded[data_embedded['new_johan_label']==1].iloc[:,1], c = 'navy', label ='bad' )
+
+plt.scatter(data_embedded[data_embedded['new_johan_label']==0].iloc[:,0], 
+            data_embedded[data_embedded['new_johan_label']==0].iloc[:,1], c = 'red', label ='good',marker ='x' )
+
+plt.legend()
+
+
 def biplot(score,coeff,columns,labels, limits,showlegend, showloadings):
     #score = pca transformed data
     #labels = data labels
