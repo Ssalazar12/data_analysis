@@ -455,3 +455,46 @@ for i in range(100):
     f1s_nodrop.append(f1)
     
 
+def get_best_model(data,features,label, model,grid,test_size,outlier_value,inlier_value,seed):
+    #data son todos los datos
+    #el mejor modelo es aquel con mayor recall
+    #model es la instancia del modelo a probar
+    #grid son los parametros que hay que probar
+    #outlier_value, inlier_value: indican cual valore del label corresponde a inlier y outlier
+    #retorna la matriz de confusión, el recall y los parámetros del mejor modelo
+    
+    df_train, y_train, df_test, y_test = modified_train_test_split(data, label,test_size,seed,features)
+    
+    matrices = []
+    good_accs = []
+    bad_accs = []
+    params = []
+    recalls = []
+    precisions = []
+    f1s = []
+    
+    for z in ParameterGrid(grid):
+        model.set_params(**z)
+        good_acc, bad_acc, conf_matrix, y_pred, y_true = test_one_class(df_train,df_test, model ,features ,label,
+                                                        inlier_value,outlier_value)
+        
+        rec = conf_matrix[1,1]/(conf_matrix[1,1]+conf_matrix[1,0])
+        pre = conf_matrix[1,1]/(conf_matrix[1,1]+conf_matrix[0,1])
+        f1 = f1_score(y_true,y_pred,average='macro')
+        
+        matrices.append(conf_matrix)
+        good_accs.append(good_acc)
+        bad_accs.append(bad_acc)
+        params.append(z)
+        recalls.append(rec)
+        precisions.append(pre)
+        f1s.append(f1)
+        
+    max_i = f1s.index(max(f1s))
+    print(params[max_i])
+    print("Confusion matrix: ")
+    print(matrices[max_i])
+    print("recall: ", recalls[max_i])
+    print("f1: ", f1s[max_i])
+    
+    return params[max_i],recalls[max_i], matrices[max_i], precisions[max_i],f1s[max_i]
