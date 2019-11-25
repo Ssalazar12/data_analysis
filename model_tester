@@ -167,115 +167,46 @@ def train_model(train_df, label_columns, model,grid_params):
             
     return prob_df, y_train, return_model, metrics
 
-def evaluate_model(feature_colums ,label_columns, model):
-    #df = dataframe, 
-    #test_pipeline = modelo a probar
-    #n_splits = numero de folds del k-fold
-    #test_pipeline = modelo a probar
-    #pipeline_name = nombre de la prueba
-    start_time = time()
-    X_test = feature_colums.copy()
-    y_test = label_columns.copy()
+#modelevaliation
+def evaluate_model(model ,X_train, X_test ,y_train, y_test):
+    #receives trained model
+    best_random_lg = model
+    top_features = features
 
-    print("Test samples",len(X_test))
-    y_pred_fs = model.predict(X_test)
-    y_probs_fs = model.predict_proba(X_test)
+    print("TRAIN RESULTS------------------------")
+    y_pred_train = best_random_lg.predict(X_train)
+    y_probs_train = best_random_lg.predict_proba(X_train)
 
-    #confusion matrix
-    conf_mat = confusion_matrix(y_test, y_pred_fs)
-    t_neg, f_pos, f_neg, t_pos = conf_mat.ravel()
-    pre = t_pos/(t_pos+f_pos)
-    rec = t_pos/(t_pos+f_neg) 
-    fpr = f_pos /(t_neg + f_pos)
+    print(confusion_matrix(y_train, y_pred_train))
+    f1 = f1_score(y_train,y_pred_train,average='macro')
+    print("f1: ",f1)
 
-    #f1
-    f1 = 2.0*(pre*rec/(pre+rec))
-    #roc-auc
-    #fpr, tpr, thresh = roc_curve(y_test, y_pred_fs)
-    #roc_auc = auc(fpr, tpr)
-    fnr = fnr_score(y_test, y_pred_fs)
-    tnr = tnr_score(y_test,y_pred_fs)
-    nvp = npv_score(y_test,y_pred_fs)
+    plt.figure(figsize=(10,10)) 
+    plt.title("ENSAMBLE -> Positive (truth) and negative Distribution LR +fs")
+    sns.distplot(y_probs_train[y_train == 1][:,1], color='blue', bins=20,label ='good')# probabilities of the negative examples(bad debt)  P(1|x=0)
+    sns.distplot(y_probs_train[y_train == 0][:,1], color= 'red', bins=20,label='bad')# probabilities of the positive examples P(1|x=1)
+    plt.legend()
+    plt.show()
 
-    prob_df = pd.DataFrame(y_probs_fs)      
-          
-    print("******* LR + fs ******************")
-    print("TPR (recall): ", rec)
-    print("FNR: ", fnr)
-    print("TNR: ", tnr)
-    print("FPR: ", fpr)
-    print("NPV: ", nvp) 
-    print("F1: ", f1)
-    print("PRE: ",pre)
-    print("Matrix")
-    print(conf_mat)
-    
-    print("")
-                     
-    print(f'Code took {time() - start_time} seconds')
-    
-    metrics = {'TPR': [], 'FNR': [], 'TNR': [], 'FPR': [], 'NVP': [], 'F1': [], 'PRE': [], 'confusion_matrix': []}
-    metrics['TPR'].append(rec)
 
-    metrics['FNR'].append(fnr)
-    
-    metrics['TNR'].append(tnr)
-    
-    metrics['FPR'].append(fpr)
-    
-    metrics['NVP'].append(nvp)
-    
-    metrics['F1'].append(f1)
-    
-    metrics['PRE'].append(pre)
-    
-    metrics['confusion_matrix'].append(conf_mat)
-    
-    return prob_df, y_test, metrics
-    
-    
-    def modified_train_test_split(dataset, dataset_label_col,testsize):
-    #dataset incluye TODAS las columnas
-    #dataset_label_col solo las labels
-    #se asegura que no queden clientes en train y test al mismo tiempo
-    df_train, df_test, y_train, y_test = train_test_split(dataset, dataset_label_col, 
-                                                      test_size=testsize, random_state=41)
-    #asegurandose que no queden clientes en training y test al mismo tiempo
-    #gets customer ids for each set
-    train_customers = df_train['customer_id'].unique()
-    test_customers = df_test['customer_id']. unique()
-    bool_mask = np.isin(train_customers,test_customers)
-    
-    #customer_ids that intersect
-    intersect = train_customers[bool_mask]
-    #getting the indices for the intersection in x_train 
-    inter_indices = df_train[df_train['customer_id'].isin(intersect)].index.values.astype(int)
-    #Delete rows with index label from train 
-    df_train_mod = df_train.drop(inter_indices,axis=0)
-    #grab the rows with those indices
-    df_intersection = df_train.loc[inter_indices]
-    #add them to test
-    df_test_mod = pd.concat([df_test,df_intersection], axis = 0)
-    
-    #toma los customer ids para cada uno
-    training_ids = df_train_mod['customer_id'].unique()
-    test_ids = df_test_mod['customer_id'].unique()
+    print("TEST RESULTS------------------------")
+    print("test size: ",len(X_test))
+    print("good and bad")
+    print(y_test.value_counts())
+    y_pred_test = best_random_lg.predict(X_test)
+    y_probs_test = best_random_lg.predict_proba(X_test)
 
-    #important to reset de indices
-    training_set = dataset[dataset['customer_id'].isin(training_ids)]
-    training_set = training_set.reset_index(drop=True)
-    test_set = dataset[dataset['customer_id'].isin(test_ids)]
-    test_set = test_set.reset_index(drop=True)
+    plt.figure(figsize=(10,10)) 
 
-    df_train = training_set.drop(non_features, axis=1)
-    y_train = training_set['our_label']
-    df_test = test_set.drop(non_features, axis=1)
-    y_test = test_set['our_label']
+    print(confusion_matrix(y_test, y_pred_test))
+    f1 = f1_score(y_test,y_pred_test,average='macro')
 
-    print("training set size: ", len(df_train))
-    print("test set size: ",len(df_test))
-    
-    return df_train, y_train, df_test, y_test
+    print("f1: ",f1)
+
+    plt.title("ENSAMBLE -> Positive (truth) and negative Distribution LR +fs")
+    sns.distplot(y_probs_test[y_test == 1][:,1], color='blue', bins=20,label ='good')# probabilities of the negative examples(bad debt)  P(1|x=0)
+    sns.distplot(y_probs_test[y_test == 0][:,1], color= 'red', bins=20,label='bad')# probabilities of the positive examples P(1|x=1)
+    plt.legend()
 
 def model_tester(train_data,train_labels,test_data,test_labels ,model_list, grid_params,test_names):
     #model_list is a list containing the instances of each model to test
@@ -498,3 +429,43 @@ def get_best_model(data,features,label, model,grid,test_size,outlier_value,inlie
     print("f1: ", f1s[max_i])
     
     return params[max_i],recalls[max_i], matrices[max_i], precisions[max_i],f1s[max_i]
+    
+    
+    ## PIPELINES
+    
+    #steps definitions
+
+classifier_ = SGDClassifier()
+feature_map = RBFSampler(gamma=.2, random_state = 42)
+sampler = SMOTE(random_state=42)
+scaler = StandardScaler()
+params = svc_random
+feat = top_features
+
+#function work
+
+steps_ = [('scaler',scaler),('sampler',sampler),('classifier',classifier_)]
+
+pipeline = Pipeline(steps_)
+
+scoring = ['f1_macro','precision']
+
+r_search = RandomizedSearchCV(estimator = pipeline, param_distributions = params, n_iter = 100,  scoring = scoring,
+                                  refit = 'precision',cv = 10, random_state=42, n_jobs = -1,iid = True)
+
+X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=0.35, random_state=42)
+
+
+r_search.fit(X_train,y_train)
+
+r_search.best_estimator_
+
+y_train_predict = r_search.best_estimator_.predict(X_train)
+
+print(r_search.best_params_)
+print("f1_score: ", f1_score(y_train, y_train_predict, average='macro'))
+print(classification_report(y_train, y_train_predict ))
+print(confusion_matrix(y_train, y_train_predict))
+
+best_svc = r_search.best_estimator_
+evaluate_model(r_search.best_estimator_ ,X_train, X_test ,y_train, y_test)
