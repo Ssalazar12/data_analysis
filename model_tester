@@ -469,3 +469,39 @@ print(confusion_matrix(y_train, y_train_predict))
 
 best_svc = r_search.best_estimator_
 evaluate_model(r_search.best_estimator_ ,X_train, X_test ,y_train, y_test)
+
+####
+## TEST A MODEL IN ONE CELL ##########################
+####
+X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y , test_size=0.3, random_state=42)
+
+#define ensemble
+model1 = LogisticRegression(random_state=1)
+model2 = DecisionTreeClassifier(random_state=1)
+model3 = SGDClassifier()
+
+model = VotingClassifier(estimators=[('lr', model1), ('dt', model2), ('svc',model3)], voting='soft')
+scaler = StandardScaler()
+
+
+#define pipe line
+steps_ = [('scaler',scaler),('classifier',model)]
+pipeline = Pipeline(steps_)
+
+classifier = pipeline
+params = sc_logic_tree_scv_params
+scoring = 'f1_macro'
+
+voting_search = RandomizedSearchCV(estimator = classifier, param_distributions = params, n_iter = 100, 
+                                   scoring = scoring,cv = 2, random_state=42, n_jobs = -1,iid = True)
+voting_search.fit(X_train,y_train)
+
+y_train_predict = voting_search.predict(X_train)
+
+print(voting_search.best_params_)
+print("f1_score: ", f1_score(y_train, y_train_predict, average='macro'))
+print(classification_report(y_train, y_train_predict ))
+print(confusion_matrix(y_train, y_train_predict))
+
+
+evaluate_model(voting_search.best_estimator_,top_features ,X_train, X_test ,y_train, y_test)
