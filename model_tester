@@ -505,3 +505,13 @@ print(confusion_matrix(y_train, y_train_predict))
 
 
 evaluate_model(voting_search.best_estimator_,top_features ,X_train, X_test ,y_train, y_test)
+
+
+
+#############################
+#####Feature extraction#####
+############################
+weights_rf =rf_cl.feature_importances_
+
+rf_drop_importance= pd.DataFrame({'feature': extended_features,'coef': weights_rf}).sort_values(by='coef',ascending=False)
+rf_drop_importance.head(40)
