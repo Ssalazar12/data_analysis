@@ -515,3 +515,113 @@ weights_rf =rf_cl.feature_importances_
 
 rf_drop_importance= pd.DataFrame({'feature': extended_features,'coef': weights_rf}).sort_values(by='coef',ascending=False)
 rf_drop_importance.head(40)
+
+
+##############################
+###Voting Ensemble Pipeline###
+##############################
+
+voting_mlp={
+            'pipe1__sampler__sampling_strategy':[0.05,0.1,0.25,0.5,0.75,1.0],
+            'pipe1__classifier__penalty':['l2','elasticnet'],
+            'pipe1__classifier__alpha': [0.0001,0.001,0.01,0.1,2.0,2.5,3.0,4.0],
+            'pipe1__classifier__loss': ['log'],
+            'pipe1__classifier__max_iter' : [50,100,300,500,700,1000],
+            'pipe1__classifier__class_weight': ['balanced'],
+            'pipe1__classifier__l1_ratio': [0.0, 0.25,0.5,0.75,1.0],
+            'pipe2__sampler__sampling_strategy':[0.05,0.1,0.25,0.5,0.75,1.0],
+            'pipe2__classifier__min_samples_split' : np.arange(10,500,30),
+            'pipe2__classifier__max_depth': np.arange(1,20,10),
+            'pipe2__classifier__max_features' :['sqrt','log2', None],
+            'pipe2__classifier__class_weight': ['balanced'],
+            'pipe3__sampler__sampling_strategy':[0.05,0.1,0.25,0.5,0.75,1.0],
+            'pipe3__classifier__hidden_layer_sizes': [(100,),(50,),(20,),(2,),(20,2)],
+            'pipe3__classifier__activation': ['relu'],
+            'pipe3__classifier__learning_rate': ['adaptive'],
+            'pipe3__classifier__max_iter': [20,50,100,150,200,300,500,700]
+            }
+
+#define the pipelines for each model
+model1 = SGDClassifier()
+model2 = DecisionTreeClassifier()
+model3 = MLPClassifier()
+scaler = StandardScaler()
+sampler = RandomUnderSampler()
+
+pipe1 = Pipeline([('scaler',scaler),('sampler', sampler),('classifier', model1)])
+pipe2 = Pipeline([('scaler',scaler),('sampler', sampler),('classifier', model2)])
+pipe3 = Pipeline([('scaler',scaler),('sampler', sampler),('classifier', model3)])
+
+#define the ensemble model
+model = VotingClassifier(estimators=[('pipe1', pipe1), ('pipe2', pipe2),
+                                     ('pipe3', pipe3)], voting='soft')
+
+params = voting_mlp
+scoring = 'f1_macro'
+
+#create the split
+X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=0.3, random_state=42)
+
+#random search
+r_search = RandomizedSearchCV(estimator = model, param_distributions = params, n_iter = 100,  
+                              scoring = scoring,cv = 3, random_state=42, n_jobs = -1,iid = True)
+
+r_search.fit(X_train,y_train)
+
+y_train_predict = r_search.predict(X_train)
+
+print(r_search.best_params_)
+print("f1_score: ", f1_score(y_train, y_train_predict, average='macro'))
+print(classification_report(y_train, y_train_predict ))
+print(confusion_matrix(y_train, y_train_predict))
+
+
+evaluate_model(r_search.best_estimator_,top_features ,X_train, X_test ,y_train, y_test)
+
+####################
+##Bagging ensemble##
+####################
+
+
+bagging_tree_params={
+            'n_estimators': [2,10,30,70,100,150,250,300],
+            'n_jobs': [-1],
+            'base_estimator__sampler__sampling_strategy':[0.05,0.1,0.25,0.5,0.75,1.0],
+            'base_estimator__classifier__min_samples_split' : np.arange(10,500,30),
+            'base_estimator__classifier__max_depth': np.arange(1,100,15),
+            'base_estimator__classifier__max_features' :['sqrt','log2', None],
+            'base_estimator__classifier__class_weight': ['balanced'],
+            }
+
+#BaggingClassifier
+#define the pipelines for each model
+model1 = DecisionTreeClassifier()
+sampler = RandomUnderSampler()
+scaler = StandardScaler()
+
+pipe1 = Pipeline([('scaler',scaler),('sampler', sampler),('classifier', model1)])
+
+#define the ensemble model
+model = BaggingClassifier(base_estimator=pipe1)
+
+params = bagging_tree_params
+scoring = 'f1_macro'
+
+#create the split
+X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=0.3, random_state=42)
+
+#random search
+r_search = RandomizedSearchCV(estimator = model, param_distributions = params, n_iter = 100,  
+                              scoring = scoring,cv = 3, random_state=42, n_jobs = -1,iid = True)
+
+r_search.fit(X_train,y_train)
+
+y_train_predict = r_search.predict(X_train)
+
+print(r_search.best_params_)
+print("f1_score: ", f1_score(y_train, y_train_predict, average='macro'))
+print(classification_report(y_train, y_train_predict ))
+print(confusion_matrix(y_train, y_train_predict))
+
+
+evaluate_model(r_search.best_estimator_,top_features ,X_train, X_test ,y_train, y_test)
