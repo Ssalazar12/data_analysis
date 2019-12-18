@@ -180,3 +180,12 @@ sns.violinplot(x='new_label', y='income_change_total_m', data=data_set)
 
 
 plt.tight_layout()
+
+####################
+#Correlation matrix#
+####################
+
+#correlation matrix of numerical features
+corrmat = pd_data[target+num_features].corr()
+f, ax = plt.subplots(figsize=(12, 9))
+sns.heatmap(corrmat, vmax=.8, square=True);
