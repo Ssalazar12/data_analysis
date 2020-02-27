@@ -695,3 +695,155 @@ def plot_roc_curve(fpr, tpr, label=None):
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate (Recall)")
     plt.legend(loc='best')
+    
+###############################################
+##### AUTO ML#################################
+#############################################
+
+#las variables que se entregan como entrada
+X_features = X_dummy
+label = Y_class
+
+# definimos la lista de modelos sobre la que se itera
+
+# --------LOGISTIC REGRESSION----------------
+
+
+random_grid_logic = {
+    'penalty': ['l1'],
+    'C': list(np.arange(0.03, 5, 0.5)),
+    'max_iter': [50,100,200,400,900,1000],
+    'class_weight': ['balanced'],
+    'solver' : ['liblinear','saga'],
+    'n_jobs' : [-1] 
+}
+logistic_dictionary = {
+    'parameter_grid':random_grid_logic,
+    'model': LogisticRegression(),
+    'name':'logistic'
+}
+
+
+# --------DECISION TREE----------------
+tree_params = {
+             'min_samples_split' : range(10,500,30),
+             'max_depth': range(1,20,10),
+             'max_features' :['sqrt','log2',None],
+             'class_weight': ['balanced']
+            }
+
+tree_dictionary = {
+    'parameter_grid':tree_params,
+    'model': DecisionTreeClassifier(),
+    'name':'dt' 
+}
+
+# --------RANDOM FOREST----------------
+max_depths = np.arange(1, 200,20).tolist()
+min_samples_splits = np.linspace(0.1, 1.0, 6, endpoint=True).tolist()
+min_samples_leafs = np.linspace(0.1, 0.5, 6, endpoint=True).tolist()
+
+forest_params= {
+    'n_estimators': [1, 2, 4, 8, 16, 32, 64,100, 150,200,250,300,350,400,500],
+    'max_depth': max_depths,
+    'min_samples_split': min_samples_splits,
+    'min_samples_leaf': min_samples_leafs,
+    'n_jobs': [-1]
+}
+
+forest_dictionary = {
+    'parameter_grid':forest_params,
+    'model': RandomForestClassifier(),
+    'name':'random_forest' 
+}
+
+test_list = [logistic_dictionary,tree_dictionary,forest_dictionary]
+
+# metricas sobre las que se itera
+scoring_list = ['f1_macro','f1','roc_auc']
+X_train, X_test, y_train, y_test = train_test_split(X_features, label, 
+                                                    stratify = label, test_size=0.3, random_state=42)
+
+print("training size: ",len(X_train))
+print("good and bad in training")
+print(y_train.value_counts())
+print("good and bad in test")
+print(y_test.value_counts())
+
+return_dict_list = []
+return_df_list = []
+# un loop para los modelos y otro dentro de ese para las metricas
+
+for i in range(0, len(test_list)):
+   
+    return_dict = { 'name': [],'best_params': [],'f1_macro_train': [],'f1_macro_test':[],
+                   'roc_auc_train':[],'roc_auc_test':[],
+                   'recall_train': [],'recall_test':[],
+                   'true_negative_train': [], 'false_negative_train' : [], 'true_positive_train':[],
+                   'false_positive_train': [],
+                   'true_negative_test': [], 'false_negative_test' : [], 'true_positive_test':[],
+                   'false_positive_test': []}
+
+    for j in range(0,len(scoring_list)):
+        name_str = test_list[i]['name']
+        model = test_list[i]['model']
+        scoring = scoring_list[j]
+        params = test_list[i]['parameter_grid']
+
+        # Random search of parameters, using 3 fold cross validation, 
+        # search across 100 different combinations, and use all available cores
+        random_search = RandomizedSearchCV(estimator = model, param_distributions = params, n_iter = 80,  scoring = scoring,
+                                      cv = 3, random_state=42, n_jobs = -1,iid = True)
+        random_search.fit(X_train,y_train)
+        y_train_pred = random_search.predict(X_train)
+        y_test_pred = random_search.predict(X_test)
+
+        confusion_train = confusion_matrix(y_train, y_train_pred)
+        confusion_test = confusion_matrix(y_test, y_test_pred)
+
+        report_train = classification_report(y_train,y_train_pred)
+        report_test = classification_report(y_test,y_test_pred)
+
+        f1_train = f1_score(y_train,y_train_pred,average='macro')
+        f1_test = f1_score(y_test,y_test_pred,average='macro')
+        
+        recall_train = recall_score(y_train, y_train_pred)
+        recall_test = recall_score(y_test, y_test_pred)
+        
+        roc_train = roc_auc_score(y_train,y_train_pred)
+        roc_test = roc_auc_score(y_test,y_test_pred)
+        
+        #true negatives [0,0], true positivs [1,1],false negatives [1,0], false positives [0,1]
+        tn_train = confusion_train[0,0]
+        fn_train = confusion_train[1,0]
+        tp_train = confusion_train[1,1]
+        fp_train = confusion_train[0,1]
+        
+        tn_test = confusion_test[0,0]
+        fn_test = confusion_test[1,0]
+        tp_test = confusion_test[1,1]
+        fp_test = confusion_test[0,1]  
+
+        return_dict['name'].append(name_str + '_' + scoring)
+        return_dict['best_params'].append(random_search.best_params_)
+        return_dict['f1_macro_train'].append(f1_train)
+        return_dict['f1_macro_test'].append(f1_test)
+        return_dict['recall_train'].append(recall_train)
+        return_dict['recall_test'].append(recall_test)
+        return_dict['roc_auc_train'].append(roc_train)
+        return_dict['roc_auc_test'].append(roc_test)
+        return_dict['true_negative_train'].append(tn_train)
+        return_dict['false_negative_train'].append(fn_train)
+        return_dict['true_positive_train'].append(tp_train)
+        return_dict['false_positive_train'].append(fp_train)
+        return_dict['true_negative_test'].append(tn_test)
+        return_dict['false_negative_test'].append(fn_test)
+        return_dict['true_positive_test'].append(tp_test)
+        return_dict['false_positive_test'].append(fp_test)
+
+    #save data as dictionaries
+    return_dict_list.append(return_dict)
+    #save data as dfs
+    return_df_list.append(pd.DataFrame(return_dict))
+
+
