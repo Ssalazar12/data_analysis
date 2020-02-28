@@ -756,8 +756,37 @@ forest_dictionary = {
     'model': RandomForestClassifier(),
     'name':'random_forest' 
 }
+# --------SVC PARAMS----------------
+svc_params = {
+                'C': np.arange(10,500,30),  
+              'gamma': np.arange(0.0001,1,10), 
+}
 
-test_list = [logistic_dictionary,tree_dictionary,forest_dictionary]
+svc_dictionary = {
+    'parameter_grid':svc_params,
+    'model': SVC(),
+    'name':'svc' 
+}
+
+#-----KNN----------------------------
+
+knn_params = {
+    'n_neighbors': [2,5,15,30,50,100,150,200,300],
+    'algorithm'': ['auto', 'ball_tree', 'kd_tree', 'brute'],
+    'p': [1, 2, 3, 4, 5],
+    'n_jobs': [-1]
+}
+
+
+knn_dictionary = {
+    'parameter_grid':knn_params,
+    'model': KNeighborsClassifier(),
+    'name':'knn' 
+}
+
+test_list = [logistic_dictionary,tree_dictionary,forest_dictionary, svc_dictionary,knn_dictionary]
+
+
 
 # metricas sobre las que se itera
 scoring_list = ['f1_macro','f1','roc_auc']
