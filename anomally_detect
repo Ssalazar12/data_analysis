@@ -1,0 +1,80 @@
+X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=0.3, random_state=42)
+
+#model and params
+forest = IsolationForest()
+forest.contamination = sum(y_train==-1)/len(y_train)
+
+forest.fit(X_train)
+y_train_predict = forest.predict(X_train)
+y_test_predict = forest.predict(X_test)
+
+print('TRAINING SET')
+
+print("predicted outliers: ", sum(y_train_predict==-1))
+print("true outliers: ", sum(y_train==-1))
+print('cofusion matrix:')
+print(confusion_matrix(y_train, y_train_predict))
+
+
+print('TEST SET')
+print("predicted outliers: ", sum(y_test_predict==-1))
+print("true outliers: ", sum(y_test==-1))
+print(confusion_matrix(y_test, y_test_predict))
+
+#scale and reduce only num_cols
+pca = PCA(n_components=3)  # Reduce to k=3 dimensions
+scaler = StandardScaler()
+
+X_scale = pd.DataFrame(scaler.fit_transform(X_test[num_features]),columns=num_features, index=X_test.index)
+X_reduce = pca.fit_transform(X_scale[num_features])
+
+X_reduce = pd.DataFrame(pca.fit_transform(X_scale),index = X_scale.index )
+
+fig = plt.figure(figsize=(17,17))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot the reduced dimensionality data points
+ax.scatter(X_reduce.iloc[:, 0], X_reduce.iloc[:, 1], X_reduce.iloc[:, 2], s=4, lw=0)
+
+# Plot xs around the test outliers
+ax.scatter(X_reduce[y_test==-1].iloc[:, 0], X_reduce[y_test==-1].iloc[:,1], 
+           X_reduce[y_test==-1].iloc[:,2],
+           lw=3, color="black", marker='x',s=80, label="predicted outlier")
+
+# Plot circles around the predicted outliers
+ax.scatter(X_reduce[y_test_predict==-1].iloc[:, 0], X_reduce[y_test_predict==-1].iloc[:,1], 
+           X_reduce[y_test_predict==-1].iloc[:,2],
+           lw=2,facecolors="white", edgecolors="r",s=80, label="predicted outlier")
+
+ax.view_init(elev=20.)
+
+
+
+#scale and reduce only num_cols
+pca = PCA(n_components=3)  # Reduce to k=3 dimensions
+scaler = StandardScaler()
+
+X_scale = pd.DataFrame(scaler.fit_transform(X_test[num_features]),columns=num_features, index=X_test.index)
+X_reduce = pca.fit_transform(X_scale[num_features])
+
+X_reduce = pd.DataFrame(pca.fit_transform(X_scale),index = X_scale.index )
+
+optimal_model = search.best_estimator_
+
+fig = plt.figure(figsize=(17,17))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot the reduced dimensionality data points
+ax.scatter(X_reduce.iloc[:, 0], X_reduce.iloc[:, 1], X_reduce.iloc[:, 2], s=4, lw=0, alpha=0.7)
+
+# Plot xs around the test outliers
+ax.scatter(X_reduce[y_test==-1].iloc[:, 0], X_reduce[y_test==-1].iloc[:,1], 
+           X_reduce[y_test==-1].iloc[:,2],
+           lw=3, color="black", marker='x',s=80, label="predicted outlier")
+
+# Plot circles around the predicted outliers
+ax.scatter(X_reduce[y_test_predict==-1].iloc[:, 0], X_reduce[y_test_predict==-1].iloc[:,1], 
+           X_reduce[y_test_predict==-1].iloc[:,2],
+           lw=2,facecolors="white", edgecolors="r",s=80, label="predicted outlier")
+
+ax.view_init(elev=20.,azim=70)
