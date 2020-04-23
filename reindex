@@ -1,0 +1,8 @@
+# fill in missing dates
+pd_data['date'] = pd.to_datetime(pd_data['date'])
+pd_data = pd_data.set_index(pd_data["date"])
+idx = pd.date_range(start_date, end_date).date
+pd_data = pd_data.reindex(idx).drop('date',axis=1)
+pd_data['amount'].fillna(0, inplace=True)
+pd_data = pd_data.rename(columns={'amount':'value'})
+pd_data
