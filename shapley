@@ -1,0 +1,50 @@
+explainer_xgb = shap.TreeExplainer(xgb, feature_perturbation="tree_path_dependent")
+
+shap_values = explainer_xgb.shap_values(X_test1)
+
+shap.summary_plot(shap_values, X_test1, plot_type="bar")
+
+
+shap.summary_plot(shap_values, X_test1)
+
+# we want to predict for these users
+df_index = df_features.set_index('appid')
+X_index = pd.get_dummies(df_index[set(df_features.columns) - set(META_COLUMNS_laf)])
+
+X_test1 = X_index.loc[ex_id][X_train_clf_laf.columns].copy()
+
+cl_prediction = lr_clf.predict_proba(X_test1)
+regressor_prediction = xgb.predict(X_test1)
+
+shap_values = explainer_xgb.shap_values(X_test1)
+
+# We can also interpret the prediction for each particular instance. 
+# The following waterfall plot shows the impact of the 20 most important feature values 
+# (according to the magnitude of their shap value) on the predicted disbursement for a 
+# given instance on the test set. 
+
+# For example, let's analyze the instance at index **sample_ind**.
+
+sample_ind = 0
+print('application id :', ex_id[sample_ind])
+print('classifier prediction: ', cl_prediction[sample_ind,1])
+print("The predicted amount for this instance is: {}".format(xgb.predict(X_test1.iloc[[sample_ind],:])))
+
+# If no variables were used on the model, the null hypothesis will produce the mean value as its prediction:
+print('Expected value')
+print(explainer_xgb.expected_value)
+
+# We will explain the predicted amount, starting from the mean amount and adding 
+# the positive or negative shap values feature by feature. 
+# The following waterfall plot shows this in ordered by the magnitude of the impact feature by feature.
+
+shap.waterfall_plot(explainer_xgb.expected_value, shap_values[sample_ind], 
+                    X_test1.iloc[sample_ind], max_display=15)
+                    
+
+print("The biggest positive contribution is ", np.max(shap_values[sample_ind,:]),
+      ", an it comes from the ''", X_test1.columns[np.argmax(shap_values[sample_ind,:])], "'' feature", sep="")
+print("The biggest negative contribution is ", np.min(shap_values[sample_ind,:]),
+      ", an it comes from the ''", X_test1.columns[np.argmin(shap_values[sample_ind,:])], "'' feature", sep="")
+
+shap.force_plot(explainer_xgb.expected_value, shap_values[sample_ind,:], X_test1.iloc[sample_ind,:])
