@@ -1,0 +1,48 @@
+def haversine_np(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+
+    All args must be of equal length.    
+
+    """
+    lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = np.sin(dlat/2.0)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2.0)**2
+
+    c = 2 * np.arcsin(np.sqrt(a))
+    km = 6367 * c
+    return km
+    
+    # first calculate the distances to inegi match and asing the closest coordinate to each row from invex/properati
+
+results_list = []
+sell_sample = pd_inegi_matching.copy() #.sample(num_sell)
+# len(pd_geo)
+
+# iterate over all of the properties in invex len(pd_space_invex)
+for i in range( len(pd_space_invex)):
+    start_time = time.time()
+    c_row =  pd_space_invex[pd_space_invex.index==i].copy()
+
+    # get all the distances with respect to c_row
+    sell_sample['origin_longitud'] = c_row['longitud'].values[0]
+    sell_sample['origin_latitud'] = c_row['latitud'].values[0]
+    sell_sample['dist_from_origin'] =  haversine_np(sell_sample['origin_longitud'], sell_sample['origin_latitud'], sell_sample['longitud'],sell_sample['latitud'])
+
+    # get the region with the minimum distance from origin
+    c_filtered = sell_sample[sell_sample['dist_from_origin']==sell_sample['dist_from_origin'].min()].copy()
+    c_filtered = c_filtered.rename(columns={'latitud':'inegi_latitud','longitud':'inegi_longitud'})
+    # get mean prices and put them to c_row
+    c_filtered.index = c_row.index
+    result_row = pd.concat([c_filtered,c_row], axis=1)
+
+    results_list.append(pd.DataFrame(result_row))
+    
+    
+    if i%100==0:
+        print('iterations done: ',(i+1))
+        print("--- %s seconds ---" % (time.time() - start_time))
